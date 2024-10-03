@@ -1,0 +1,46 @@
+name: Deploy to ECS
+
+on:
+  push:
+    branches:
+      - main  # Change this to your default branch
+
+jobs:
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the code
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Set up the AWS CLI
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-to-assume: ${{secrets.ODS_DEV_IAM_GITHUBACTION}}
+          role-session-name: CI-github-action
+          aws-region: "eu-west-1"
+
+      # Log in to Amazon ECR
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # Build, tag, and push Docker image to Amazon ECR
+      - name: Build, tag, and push Docker image
+        run: |
+          IMAGE_URI=your-account-id.dkr.ecr.eu-west-1.amazonaws.com/your-repo:latest
+          docker build -t $IMAGE_URI .
+          docker push $IMAGE_URI
+
+      # Deploy to ECS
+      - name: Deploy to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v1
+        with:
+          cluster: your-ecs-cluster-name
+          service: your-ecs-service-name
+          task-definition: your-task-def.json
+          container-name: your-container-name
+          image: ${{ steps.login-ecr.outputs.image }}
